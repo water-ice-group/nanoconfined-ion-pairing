@@ -1,0 +1,37 @@
+
+# ----------------- Init Section -----------------
+
+include "system.in.init"
+
+# ----------------- Atom Definition Section -----------------
+
+read_data "system.data"
+
+# ----------------- Settings Section -----------------
+
+include "system.in.settings"
+
+# ----------------- Run Section -----------------
+
+variable t equal step
+group gSPCE type 2 3
+
+group carbon type 1
+fix fix_c carbon setforce 0.0 0.0 0.0 # don't move carbon atoms 
+
+group elyte type 2 3 4 5
+
+min_style cg
+minimize 1.0e-5 1.0e-7 1000 10000
+reset_timestep 0
+
+dump unwrapped all dcd 1000 traj_unwrapped_$t.dcd 
+dump_modify unwrapped unwrap yes 
+thermo_style custom time step temp press vol density pe ke etotal enthalpy fmax fnorm
+thermo_modify flush yes
+thermo 1000
+restart 10000 run1.restart run2.restart
+fix fShakeSPCE gSPCE shake 0.0001 100 0 b 1 a 1
+fix NVT elyte nvt temp 330 330 100.0
+run 10000000
+write_restart end_nvt.restart

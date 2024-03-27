@@ -1,0 +1,174 @@
+@SET PATH_TO_COORD  initial_structure.pdb
+
+&GLOBAL
+  PROJECT confined-NaClWatCarb-revPBE-D3
+  PREFERRED_FFT_LIBRARY FFTW
+  FFTW_PLAN_TYPE MEASURE
+  PREFERRED_DIAG_LIBRARY ELPA
+  RUN_TYPE MD
+  PRINT_LEVEL LOW
+&END GLOBAL
+
+&EXT_RESTART
+  RESTART_FILE_NAME confined-NaClWatCarb-revPBE-D3-1.restart
+&END EXT_RESTART
+
+&FORCE_EVAL
+  &DFT
+    BASIS_SET_FILE_NAME GTH_BASIS_SETS 
+    BASIS_SET_FILE_NAME BASIS_MOLOPT 
+    POTENTIAL_FILE_NAME POTENTIAL 
+    &MGRID
+      CUTOFF 1200
+      NGRIDS 5
+    &END MGRID
+    &SCF
+      # needs a pre-converged wfn as input
+      SCF_GUESS RESTART
+      MAX_SCF 20 
+      EPS_SCF 5.0E-7 
+      ADDED_MOS 20
+      &SMEAR ON
+        METHOD FERMI_DIRAC
+        ELECTRONIC_TEMPERATURE [K] 300
+      &END SMEAR
+      &DIAGONALIZATION
+        ALGORITHM STANDARD
+      &END DIAGONALIZATION
+      &MIXING
+        METHOD BROYDEN_MIXING
+        ALPHA   0.4
+        BETA    0.5
+        NBROYDEN  8
+      &END 
+      #&OT
+      #  MINIMIZER DIIS
+      #  PRECONDITIONER FULL_ALL
+      #&END OT
+      &OUTER_SCF
+        MAX_SCF 20
+        EPS_SCF 5.0E-7
+      &END OUTER_SCF
+      &PRINT
+        &RESTART
+          ADD_LAST NUMERIC
+          &EACH
+            QS_SCF 0
+          &END EACH
+        &END RESTART
+      &END PRINT
+    &END SCF
+    &QS 
+      EPS_DEFAULT 1.0E-12
+      EPS_PGF_ORB 1.0E-14
+    &END QS
+    &XC # revPBE
+      &XC_FUNCTIONAL
+        &PBE 
+          PARAMETRIZATION REVPBE
+        &END
+      &END XC_FUNCTIONAL
+      &XC_GRID
+        XC_DERIV SPLINE2_SMOOTH
+      &END XC_GRID
+      &VDW_POTENTIAL
+        POTENTIAL_TYPE PAIR_POTENTIAL
+        &PAIR_POTENTIAL
+          TYPE DFTD3
+          R_CUTOFF 15
+          LONG_RANGE_CORRECTION TRUE
+          REFERENCE_FUNCTIONAL revPBE
+          PARAMETER_FILE_NAME dftd3.dat
+        &END PAIR_POTENTIAL
+      &END VDW_POTENTIAL
+    &END XC
+  &END DFT
+  &SUBSYS
+    &TOPOLOGY
+      COORD_FILE_FORMAT PDB
+      COORD_FILE_NAME ${PATH_TO_COORD}
+      CONN_FILE_FORMAT OFF
+    &END TOPOLOGY
+    &CELL
+      ABC [angstrom] 12.350   12.834   25.000
+      PERIODIC XYZ
+    &END CELL
+    &KIND H
+      MASS 2.0 
+      BASIS_SET TZV2P-GTH-q1
+      POTENTIAL GTH-PBE-q1
+    &END KIND
+    &KIND O
+      BASIS_SET TZV2P-GTH-q6
+      POTENTIAL GTH-PBE-q6
+    &END KIND
+    &KIND C
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE-q4
+    &END KIND
+    &KIND Na
+       BASIS_SET TZV2P-GTH-q9
+       POTENTIAL GTH-PBE-q9
+    &END KIND
+    &KIND Cl
+       BASIS_SET TZV2P-GTH-q7
+       POTENTIAL GTH-PBE-q7
+    &END KIND
+  &END SUBSYS
+&END FORCE_EVAL
+
+&MOTION
+  &MD
+    ENSEMBLE  NVT
+    STEPS 50000
+    MAX_STEPS  50000
+    TIMESTEP     1.0
+    TEMPERATURE    330
+    &THERMOSTAT
+      TYPE  CSVR
+      REGION  GLOBAL
+      &CSVR
+        TIMECON    50
+      &END CSVR
+    &END THERMOSTAT
+    &PRINT
+      FORCE_LAST  T
+      &ENERGY  SILENT
+        &EACH
+          MD  1
+        &END EACH
+      &END ENERGY
+    &END PRINT
+  &END MD
+  &CONSTRAINT
+    &FIXED_ATOMS
+      LIST 1..120     
+    &END FIXED_ATOMS
+  &END CONSTRAINT
+  &PRINT
+    &TRAJECTORY  SILENT
+      FORMAT  DCD
+      &EACH
+        MD  1
+      &END EACH
+    &END TRAJECTORY
+    &FORCES  SILENT
+      FORMAT  DCD
+      &EACH
+        MD  1
+      &END EACH
+    &END FORCES
+    &VELOCITIES SILENT
+      FORMAT  DCD
+      &EACH
+        MD 1
+      &END EACH
+    &END VELOCITIES
+    &RESTART  SILENT
+      ADD_LAST  NUMERIC
+      &EACH
+        MD  1
+      &END EACH
+    &END RESTART
+  &END PRINT
+&END MOTION

@@ -1,0 +1,71 @@
+log lammps_run.log
+
+units real
+dimension 3
+atom_style full
+boundary p p f
+neigh_modify every 1 delay 0 check yes
+kspace_style pppm 1.0e-5
+kspace_modify slab 3.0
+
+read_data end_equil.data
+
+pair_style hybrid/overlay nnp dir "//sdcc/u/kfong/projects/nnps/12_gen7_lr/nnp-data" showew no showewsum 10000 maxew 10000 resetew yes calcd 1 wricde 0.0 maxcde 10000000.0 wricdf 10000000 maxcdf 10000000 cflength 1.8897261328  cfenergy 0.0015936010974213599 emap "1:C,2:O,3:H,4:Na,5:Cl" coul/long 10.0
+pair_coeff * * nnp 6.35013
+pair_coeff * * coul/long
+
+set type 1 charge 0.0
+set type 2 charge  -0.834
+set type 3 charge 0.417
+set type 4 charge 1.0
+set type 5 charge -1.0
+
+variable t equal step
+
+group carbons type 1
+group elyte type 2 3 4 5
+
+compute top_height carbons reduce max z
+compute bot_height carbons reduce min z
+variable height_diff equal c_top_height-c_bot_height
+variable top_plus equal c_top_height+0.1
+variable top_minus equal c_top_height-0.1
+variable bot_plus equal c_bot_height+0.1
+variable bot_minus equal c_bot_height-0.1
+thermo_style custom  v_top_minus v_top_plus v_bot_minus v_bot_plus
+run 0
+
+region r_top block EDGE EDGE EDGE EDGE ${top_minus} ${top_plus}
+region r_bot block EDGE EDGE EDGE EDGE ${bot_minus} ${bot_plus}
+group top region r_top
+group bot region r_bot
+
+compute cTemp carbons temp
+compute eTemp elyte temp
+
+dump unwrapped2 all dcd 1000 traj_unwrapped_$t.dcd 
+dump_modify unwrapped2 unwrap yes 
+thermo_style custom time step temp c_cTemp c_eTemp press vol density pe ke etotal v_height_diff spcpu cpuremain
+thermo_modify flush yes
+thermo 1000
+restart 1000 run1.restart run2.restart
+#restart 10000 run.restart
+fix NVT elyte nvt temp 300 300 100.0
+
+fix fix_c_bot bot setforce 0.0 0.0 NULL # move bottom layer in z-direction
+fix fix_c_top top setforce 0.0 0.0 0.0 # don't move top layer at all
+
+# add piston to bottom layer
+variable n_carbon equal count(bot)
+variable surface_area equal cella*cellb
+variable pressure equal 1 # atm
+variable conversion equal 1.458*(10^-5) # convert atm to kcal/mol-A^3
+variable force_bot equal ${pressure}*${conversion}*${surface_area}/${n_carbon}
+fix ext_pbot bot addforce 0.0 0.0 v_force_bot 
+fix piston bot rigid/nve single torque 1 off off off    # Integrate the position of the bottom layer as a single rigid body - no thermostat. All torque components are set off to avoid rotating the layer.
+
+timestep 0.5
+run 1000000 upto
+write_restart piston.restart.*
+write_data end_piston.data
+write_dump all xyz end_piston.xyz modify sort id

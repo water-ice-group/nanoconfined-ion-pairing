@@ -1,0 +1,57 @@
+log lammps_run.log
+
+units real
+dimension 3
+atom_style full
+boundary p p f
+neigh_modify every 1 delay 0 check yes
+kspace_style pppm 1.0e-5
+kspace_modify slab 3.0
+
+#confined NaCl
+
+pair_style hybrid/overlay nnp dir "/work/ec214/ec214/bs688/nnp-data" showew no showewsum 10000 maxew 10000 resetew yes calcd 1 wricde 0.0 maxcde 10000000.0 wricdf 10000000 maxcdf 1000000000 cflength 1.8897261328  cfenergy 0.0015936010974213599 emap "1:O,2:H,3:Na,4:Cl" coul/long 10.0
+
+read_data example-lammps-data-6.7A
+
+
+pair_coeff * * nnp 6.35013
+pair_coeff * * coul/long
+
+
+set type 1 charge  -0.834
+set type 2 charge 0.417
+set type 3 charge 1.0
+set type 4 charge -1.0
+
+variable t equal step
+
+group elyte type 1 2 3 4 
+
+
+group water type 1 2
+group oxygen type 1
+group hydrogen type 2
+group Na type 3
+group Cl type 4
+
+fix Owalls oxygen wall/lj126 zlo 0.0 0.135 3.19 8.0 zhi 6.7 0.135 3.19 8.0
+fix Nawalls Na wall/lj126 zlo 0.0 7 2.75 8.0 zhi 6.7 7 2.75 8.0
+fix Clwalls Cl wall/lj126 zlo 0.0 0.5 3.2 8.0 zhi 6.7 0.5 3.2 8.0
+
+compute eTemp elyte temp
+
+dump unwrapped2 all dcd 1000 traj_unwrapped_$t.dcd 
+dump_modify unwrapped2 unwrap yes 
+thermo_style custom time step temp c_eTemp press vol density pe ke etotal spcpu cpuremain
+thermo_modify flush yes
+thermo 1000
+
+
+#restart 1000 run1.restart run2.restart
+restart 1000000 run.restart
+fix NVT all nvt temp 300 300 100.0
+
+timestep 0.5
+run 6000000 upto
+write_restart nvt.restart.*
