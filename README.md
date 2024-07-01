@@ -2,7 +2,7 @@
 
 This repository contains supplementary data supporting the findings of the paper: 
 
-Fong KD, Sumic B, O’Neill N, Schran C, Grey CP, Michaelides A. The interplay of solvation and polarization effects on ion pairing in nanoconfined electrolytes. ChemRxiv. 2024; doi:10.26434/chemrxiv-2024-r67mx
+Fong KD, Sumic B, O’Neill N, Schran C, Grey CP, Michaelides A. The interplay of solvation and polarization effects on ion pairing in nanoconfined electrolytes. Nano Letters 24.16 (2024): 5024-5030. https://doi.org/10.1021/acs.nanolett.4c00890
 
 ## Contents
 * `nnp`:
